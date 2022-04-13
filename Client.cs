@@ -47,6 +47,21 @@ namespace iSpyMatchmaker
                 stream.BeginRead(recieveBuffer, 0, dataBufferSize, RecieveCallback, null);
             }
 
+            public void SendData(Packet _packet)
+            {
+                try
+                {
+                    if (socket != null)
+                    {
+                        stream.BeginWrite(_packet.ToArray(), 0, _packet.Length(), null, null);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Error sending data to client {id} via TCP {e}");
+                }
+            }
+
             private void RecieveCallback(IAsyncResult _result)
             {
                 try

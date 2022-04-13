@@ -13,7 +13,7 @@ namespace iSpyMatchmaker
         private ushort port;
         private int maxPlayer;
         private TcpListener server;
-        private Dictionary<int, Client> clients = new();
+        public static Dictionary<int, Client> clients = new();
 
         public void Start(int _max, ushort _port)
         {

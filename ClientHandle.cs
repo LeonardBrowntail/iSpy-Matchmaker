@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace iSpyMatchmaker
 {
-    internal class ServerSend : PacketSend
+    internal class ClientHandle
     {
-        public static void SendTerminationRequestToServer()
+        public static void HandleUpdate(int _senderID, Packet _packet)
         {
         }
     }

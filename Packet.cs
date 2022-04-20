@@ -1,43 +1,85 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace iSpyMatchmaker
 {
-    public enum ServerPackets
+    #region Server-Matchmaker Packets
+
+    /// <summary>
+    /// Packets from matchmaker to servers
+    /// </summary>
+    public enum MatchmakerServerPackets
     {
-        welcome
+        updateRequest, terminationRequest
     }
 
-    public enum ClientPacket
+    /// <summary>
+    /// Packets from server to matchmaker
+    /// </summary>
+    public enum ServerMatchmakerPackets
     {
+        initialization, updateReply, terminationReply
     }
 
-    internal class Packet : IDisposable
+    #endregion Server-Matchmaker Packets
+
+    #region Client-Matchmaker Packets
+
+    /// <summary>
+    /// Packets from matchmaker to clients
+    /// </summary>
+    public enum MatchmakerClientPackets
+    {
+        updateReply
+    }
+
+    /// <summary>
+    /// Packets from clients to matchamaker
+    /// </summary>
+    public enum ClientMatchmakerPackets
+    {
+        updateRequest
+    }
+
+    #endregion Client-Matchmaker Packets
+
+    public class Packet : IDisposable
     {
         private List<byte> buffer;
         private byte[] readableBuffer;
         private int readPos;
 
-        #region Constructors
-
+        /// <summary>
+        /// Creates a new empty packet (without an ID).
+        /// </summary>
         public Packet()
         {
-            buffer = new();
-            readPos = 0;
+            buffer = new List<byte>(); // Intitialize buffer
+            readPos = 0; // Set readPos to 0
         }
 
+        /// <summary>Creates a new packet with a given ID. Used for sending.</summary>
+        /// <param name="_id">The packet ID.</param>
         public Packet(int _id)
         {
-            buffer = new();
-            readPos = 0;
+            buffer = new List<byte>(); // Intitialize buffer
+            readPos = 0; // Set readPos to 0
 
-            Write(_id);
+            Write(_id); // Write packet id to the buffer
         }
 
-        #endregion Constructors
+        /// <summary>
+        /// Creates a packet from which data can be read. Used for receiving.
+        /// </summary>
+        /// <param name="_data">The bytes to add to the packet.</param>
+        public Packet(byte[] _data)
+        {
+            buffer = new List<byte>(); // Intitialize buffer
+            readPos = 0; // Set readPos to 0
+
+            SetBytes(_data);
+        }
 
         #region Functions
 
@@ -99,7 +141,7 @@ namespace iSpyMatchmaker
 
         #endregion Functions
 
-        #region WriteFuncs
+        #region Write Data
 
         /// <summary>Adds a byte to the packet.</summary>
         /// <param name="_value">The byte to add.</param>
@@ -158,9 +200,9 @@ namespace iSpyMatchmaker
             buffer.AddRange(Encoding.ASCII.GetBytes(_value)); // Add the string itself
         }
 
-        #endregion WriteFuncs
+        #endregion Write Data
 
-        #region ReadFuncs
+        #region Read Data
 
         /// <summary>Reads a byte from the packet.</summary>
         /// <param name="_moveReadPos">Whether or not to move the buffer's read position.</param>
@@ -331,7 +373,7 @@ namespace iSpyMatchmaker
             }
         }
 
-        #endregion ReadFuncs
+        #endregion Read Data
 
         private bool disposed = false;
 

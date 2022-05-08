@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
@@ -8,32 +9,53 @@ namespace iSpyMatchmaker
     internal class Program
     {
         //Matchmaker server
-        private static Matchmaker matchmaker;
+        private static readonly ushort matchmakerPort = 7777;
 
         //Room manager
-
-        private static Dictionary<int, Process> processes;
-
-        private static ushort startingPort = 27016;
-        private static string programName = "";
+        private static bool isRunning = false;
 
         private static void Main(string[] args)
         {
             Console.Title = "iSpy Matchmaker";
-            Console.Write($"Please insert the server build file name (include extension!): ");
-            programName = Console.ReadLine();
+            Console.WriteLine($"Please insert the server build file name (include extension!): ");
+            string programName = Console.ReadLine();
+            Console.WriteLine($"How many rooms do you want to open?");
+            string roomCount = Console.ReadLine();
 
-            RoomHandler.instance = new RoomHandler(programName);
+            Matchmaker.Singleton.Initialize(50, 7777);
+            RoomHandler.Singleton.Initialize(roomCount);
 
-            bool running = false;
-            while (running)
+            //todo: run a room once, wait for connection, run again
+
+            isRunning = true;
+
+            Thread mainThread = new(new ThreadStart(MainThread));
+        }
+
+        private static void MainThread()
+        {
+            Console.WriteLine($"Main thread has started, running at {Consts.TICKS_PER_SEC} ticks per second");
+            DateTime nextLoop = DateTime.Now;
+
+            while (isRunning)
             {
-                var input = Console.ReadLine();
-                if (input == "exit")
+                while (nextLoop < DateTime.Now)
                 {
-                    running = false;
+                    Update();
+
+                    nextLoop = nextLoop.AddMilliseconds(Consts.MS_PER_TICK);
+
+                    if (nextLoop > DateTime.Now)
+                    {
+                        Thread.Sleep(nextLoop - DateTime.Now);
+                    }
                 }
             }
+        }
+
+        private static void Update()
+        {
+            ThreadManager.UpdateMain();
         }
     }
 }

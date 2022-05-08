@@ -2,14 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace iSpyMatchmaker
 {
     internal class ThreadManager
     {
-        private static readonly List<Action> executeOnMainThread = new List<Action>();
-        private static readonly List<Action> executeCopiedOnMainThread = new List<Action>();
+        private static readonly List<Action> executeOnMainThread = new();
+        private static readonly List<Action> executeCopiedOnMainThread = new();
         private static bool actionToExecuteOnMainThread = false;
 
         /// <summary>Sets an action to be executed on the main thread.</summary>

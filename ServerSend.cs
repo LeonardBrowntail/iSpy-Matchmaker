@@ -8,8 +8,16 @@ namespace iSpyMatchmaker
 {
     internal class ServerSend : PacketSend
     {
-        public static void SendTerminationRequestToServer()
+        /// <summary>
+        /// Sends a packet to terminate a server
+        /// </summary>
+        /// <param name="_id">server's id</param>
+        public static void TerminateServer(int _id)
         {
+            using (Packet packet = new((int)MatchmakerServerPackets.terminationRequest))
+            {
+                SendTCPData(_id, packet);
+            }
         }
     }
 }

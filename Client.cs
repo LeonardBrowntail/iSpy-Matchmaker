@@ -12,13 +12,46 @@ namespace iSpyMatchmaker
     {
         public static int dataBufferSize = 4096;
 
-        public int id;
-        public TCP tcp;
+        /// <summary>
+        /// Client's or Server's internal matchmaking ID
+        /// </summary>
+        /// <remarks>
+        /// Used in packet sending.
+        /// Unique for every connection, whether it is a server or a client.
+        /// Very important that no two connections to have the same id, otherwise packet sending would be a total mess.
+        /// However, a client and a server may have the same ID.
+        /// To differenciate between a client and a server, <c>isServer</c> bool is used.
+        /// </remarks>
+        private readonly int id;
 
-        public Client(int _clientId)
+        private bool isServer;
+        private TCP tcp;
+
+        /// <summary>
+        /// Client's or Server's internal matchmaking ID
+        /// </summary>
+        /// <remarks>
+        /// Used in packet sending.
+        /// Unique for every connection, whether it is a server or a client.
+        /// Very important that no two connections to have the same id, otherwise packet sending would be a total mess.
+        /// However, a client and a server may have the same ID.
+        /// To differenciate between a client and a server, <c>isServer</c> bool is used.
+        /// </remarks>
+        public int ID => id;
+
+        public bool IsServer => isServer;
+        public TCP Transport => tcp;
+
+        /// <summary>
+        /// Creates a new client connection between matchmaker and client or server
+        /// </summary>
+        /// <param name="_clientId">id to be assigned</param>
+        /// <param name="_isServer"><c>true</c>, if this connection is with a Unity server</param>
+        public Client(int _clientId, bool _isServer = false)
         {
             id = _clientId;
-            tcp = new(_clientId);
+            isServer = _isServer;
+            tcp = new(_clientId, _isServer);
         }
 
         /// <summary>
@@ -28,15 +61,36 @@ namespace iSpyMatchmaker
         {
             public TcpClient socket;
 
+            // Tags
+            /// <summary>
+            /// This TCP's id, which is the same as its client
+            /// </summary>
             private readonly int id;
+
+            /// <summary>
+            /// This TCP's server tag, the same as client
+            /// </summary>
+            private bool isServer;
+
+            // Packet handling
             private NetworkStream stream;
+
             private byte[] receiveBuffer;
+            private Packet receivedPacket = null;
 
-            private Packet receivedPacket;
+            private delegate void PacketHandler(int _senderID, Packet _packet);
 
-            public TCP(int _id)
+            // Server handling
+            private static Dictionary<int, PacketHandler> serverPacketsHandler = null;
+
+            // Client handling
+            private static Dictionary<int, PacketHandler> clientPacketsHandler = null;
+
+            public TCP(int _id, bool _isServer)
             {
                 id = _id;
+                isServer = _isServer;
+                InitializeData(_isServer);
             }
 
             /// <summary>
@@ -61,6 +115,15 @@ namespace iSpyMatchmaker
                 stream.BeginRead(receiveBuffer, 0, dataBufferSize, ReceiveCallback, null);
             }
 
+            public void Disconnect()
+            {
+                socket.Close();
+                stream = null;
+                receivedPacket = null;
+                receiveBuffer = null;
+                socket = null;
+            }
+
             /// <summary>
             /// This function is called when the client's <c>stream</c> has received a stream
             /// </summary>
@@ -75,7 +138,14 @@ namespace iSpyMatchmaker
                     int _bytelength = stream.EndRead(_result);
                     if (_bytelength <= 0)
                     {
-                        // todo: Disconnect
+                        if (isServer)
+                        {
+                            Matchmaker.Servers[id].Disconnect();
+                        }
+                        else
+                        {
+                            Matchmaker.Clients[id].Disconnect();
+                        }
                         return;
                     }
 
@@ -89,7 +159,14 @@ namespace iSpyMatchmaker
                 catch (Exception e)
                 {
                     Console.WriteLine($"Exception thrown: {e}");
-                    //todo: Disconnect
+                    if (isServer)
+                    {
+                        Matchmaker.Servers[id].Disconnect();
+                    }
+                    else
+                    {
+                        Matchmaker.Clients[id].Disconnect();
+                    }
                 }
             }
 
@@ -142,9 +219,15 @@ namespace iSpyMatchmaker
                     byte[] packetBytes = receivedPacket.ReadBytes(packetLength);
                     ThreadManager.ExecuteOnMainThread(() =>
                     {
-                        using (Packet _packet = new Packet(packetBytes))
+                        using Packet _packet = new(packetBytes);
+                        int _packetID = _packet.ReadInt();
+                        if (isServer)
                         {
-                            int _packetID = _packet.ReadInt();
+                            serverPacketsHandler[_packetID](id, _packet);
+                        }
+                        else
+                        {
+                            clientPacketsHandler[_packetID](id, _packet);
                         }
                     });
 
@@ -165,6 +248,35 @@ namespace iSpyMatchmaker
 
                 return false;
             }
+
+            private void InitializeData(bool _isServer)
+            {
+                if (_isServer)
+                {
+                    clientPacketsHandler = null;
+                    serverPacketsHandler = new()
+                    {
+                        { (int)ServerMatchmakerPackets.initialization, ServerHandle.HandleInitReply },
+                        { (int)ServerMatchmakerPackets.updateReply, ServerHandle.HandleUpdateReply },
+                        { (int)ServerMatchmakerPackets.terminationReply, ServerHandle.HandleTerminationReply }
+                    };
+                }
+                else
+                {
+                    serverPacketsHandler = null;
+                    clientPacketsHandler = new()
+                    {
+                        { (int)ClientMatchmakerPackets.updateRequest, ClientHandle.HandleUpdate }
+                    };
+                }
+            }
+        }
+
+        public void Disconnect()
+        {
+            Console.WriteLine($"{(isServer ? "server" : "client")}-{id} ({tcp.socket.Client.RemoteEndPoint}) has disconnected...");
+
+            tcp.Disconnect();
         }
     }
 }

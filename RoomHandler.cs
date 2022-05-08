@@ -19,7 +19,12 @@ namespace iSpyMatchmaker
     internal class RoomHandler
     {
         // Instance variable
-        public static RoomHandler instance;
+        private static RoomHandler singleton = null;
+
+        private bool initialized = false;
+
+        public static RoomHandler Singleton
+        { get { if (singleton == null) singleton = new(); return singleton; } }
 
         /// <summary>
         /// Matchmaker current directory
@@ -29,7 +34,7 @@ namespace iSpyMatchmaker
         /// <summary>
         /// 1st room port number is set to 1 + matchmaker's port
         /// </summary>
-        private readonly ushort roomStartingPort = 27016;
+        private readonly ushort roomStartingPort = 7778;
 
         /// <summary>
         /// Room program name, a.k.a the Unity server program
@@ -39,35 +44,27 @@ namespace iSpyMatchmaker
         /// <summary>
         /// The number of rooms that are started by the matchmaker
         /// </summary>
-        private int roomCount;
+        private int roomCount = 0;
 
         /// <summary>
         /// List of rooms with their unique IDs
         /// </summary>
-        private Dictionary<int, Process> rooms;
+        private Dictionary<int, Process> rooms = null;
+
+        private Dictionary<int, ServerDataEntry> rooms_entry = null;
+
+        public static Dictionary<int, ServerDataEntry> Entries => singleton.rooms_entry;
 
         private RoomHandler()
         {
         }
 
-        public RoomHandler(string programName)
+        public void Initialize(string programName)
         {
-            // Singleton
-            if (instance == null)
-            {
-                instance = this;
-            }
-            else if (instance != this)
-            {
-                Console.WriteLine($"RoomHandler already exist");
-                return;
-            }
-
-            // Assignment
             roomName = programName;
-
-            // Reset room dictionary
             ResetRoomDict();
+
+            initialized = true;
         }
 
         /// <summary>
@@ -75,6 +72,11 @@ namespace iSpyMatchmaker
         /// </summary>
         public void OpenRoom()
         {
+            if (!initialized)
+            {
+                Console.WriteLine($"Roomhandler is not yet initialized!");
+                return;
+            }
             ProcessStartInfo p_info = new()
             {
                 UseShellExecute = true,
@@ -85,7 +87,11 @@ namespace iSpyMatchmaker
                 if (!rooms.ContainsKey(i))
                 {
                     p_info.Arguments = $"-port {roomStartingPort + i}";
-                    rooms.Add(i, Process.Start(p_info));
+                    rooms.Add(roomStartingPort + i, Process.Start(p_info));
+                }
+                else
+                {
+                    Console.WriteLine($"port {roomStartingPort + i} is being used");
                 }
             }
         }
@@ -96,6 +102,11 @@ namespace iSpyMatchmaker
         /// <param name="_roomCount">Count of rooms to open</param>
         public void OpenRoom(int _roomCount)
         {
+            if (!initialized)
+            {
+                Console.WriteLine($"Roomhandler is not yet initialized!");
+                return;
+            }
             ProcessStartInfo p_info = new()
             {
                 UseShellExecute = true,
@@ -104,7 +115,7 @@ namespace iSpyMatchmaker
             for (int id = 0; id < _roomCount; id++)
             {
                 p_info.Arguments = $"-port {roomStartingPort + id}";
-                rooms.Add(id, Process.Start(p_info));
+                rooms.Add(roomStartingPort + id, Process.Start(p_info));
             }
         }
 
@@ -123,6 +134,14 @@ namespace iSpyMatchmaker
             rooms.Clear();
         }
 
+        public void TerminateRoom(int id)
+        {
+            Matchmaker.Servers[id].Disconnect();
+            singleton.rooms[id].Kill();
+            singleton.rooms.Remove(id);
+        }
+
+        //todo: find a way to use these...
         private int FindMissingPort(int[] arr, int length)
         {
             int a = 0, b = length - 1;

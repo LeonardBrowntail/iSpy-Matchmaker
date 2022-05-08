@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
 
@@ -13,41 +10,77 @@ namespace iSpyMatchmaker
     /// </summary>
     internal class Matchmaker
     {
+        private static Matchmaker singleton;
+        private bool initialized = false;
+
+        public static Matchmaker Singleton
+        { get { if (singleton == null) singleton = new Matchmaker(); return singleton; } }
+
         private ushort port;
-        private int maxPlayer;
+        private int maxClientConnections;
+        private int maxServerConnections;
+        private bool serversReady = false;
         private TcpListener server;
-        public static Dictionary<int, Client> servers = new();
-        public static Dictionary<int, Client> clients = new();
 
-        // Packet handling
-        private Packet receivedPacket;
+        public int MaxServer => maxServerConnections;
 
-        private delegate void PacketHandler(Packet _packet);
+        /// <summary>
+        /// Dictionary to keep track of servers connected
+        /// </summary>
+        private Dictionary<int, Client> servers = new();
 
-        private static Dictionary<int, PacketHandler> serverPacketsHandler;
-        private static Dictionary<int, PacketHandler> clientPacketsHandler;
+        /// <summary>
+        /// Dictionary to keep track of clients connected
+        /// </summary>
+        private Dictionary<int, Client> clients = new();
+
+        /// <summary>
+        /// Get matchmaker's server dictionary
+        /// </summary>
+        public static Dictionary<int, Client> Servers => singleton.servers;
+
+        /// <summary>
+        /// Get matchmaker's client dictionary
+        /// </summary>
+        public static Dictionary<int, Client> Clients => singleton.clients;
+
+        private Matchmaker()
+        {
+            maxClientConnections = 0;
+            maxServerConnections = 0;
+            port = 0;
+        }
+
+        public void Initialize(int _serverCount, ushort _port)
+        {
+            maxClientConnections = 50;
+            maxServerConnections = _serverCount;
+            port = _port;
+            initialized = true;
+        }
 
         /// <summary>
         /// Start method to open matchmaker server for incoming connections
         /// </summary>
         /// <param name="_max">Maximum clients to connect in the matchmaker server</param>
         /// <param name="_port">Port to listen to</param>
-        public void Start(int _max, ushort _port)
+        public void Start()
         {
-            // Set variables
-            maxPlayer = _max;
-            port = _port;
-
+            if (!initialized)
+            {
+                Console.WriteLine($"Mmatchmaker is not yet initialized");
+            }
             // Initialize server data
             Console.WriteLine($"Server starting...");
             InitializeServerData();
-            receivedPacket = new();
+            InitializeClientData();
 
             server = new(IPAddress.Any, port);
             server.Start();
 
+            Console.WriteLine($"Please refrain any connections from outside");
             server.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
-            Console.WriteLine($"Server started on {server.Server.RemoteEndPoint}:{port}...");
+            Console.WriteLine($"Server started on {server.Server.RemoteEndPoint}: {port}...");
         }
 
         /// <summary>
@@ -60,89 +93,66 @@ namespace iSpyMatchmaker
             Console.WriteLine($"Incoming connection from {client.Client.RemoteEndPoint}...");
             server.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
 
-            for (int i = 1; i <= maxPlayer; i++)
+            if (!serversReady)
             {
-                if (clients[i].tcp.socket == null)
+                var remote = (IPEndPoint)client.Client.RemoteEndPoint;
+                var local = (IPEndPoint)client.Client.LocalEndPoint;
+                if (remote.Address == local.Address)
                 {
-                    clients[i].tcp.Connect(client);
-                    return;
-                }
-
-                Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect: server is full!");
-            }
-        }
-
-        /// <summary>
-        /// This function handles incoming data from matchmaker.
-        /// </summary>
-        /// <remarks>
-        /// Basically, when a packet is received, it has a chance of it not being whole and, if not handled correctly, may result in data loss.
-        /// This may happen because once a packet is used, the content will get discarded for the next incoming packet.
-        /// To avoid this, we have to check if the unread length is less than the packet length contained.
-        /// If the length contained is different from the data unread, then the data is segmented and some information has yet to come.
-        /// </remarks>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        private bool HandleData(byte[] data)
-        {
-            int packetLength = 0;
-
-            receivedPacket.SetBytes(data);
-            if (receivedPacket.UnreadLength() >= 4)
-            {
-                packetLength = receivedPacket.ReadInt();
-                if (packetLength <= 0)
-                {
-                    return true;
-                }
-            }
-
-            while (packetLength > 0 & packetLength <= receivedPacket.UnreadLength())
-            {
-                byte[] packetBytes = receivedPacket.ReadBytes(packetLength);
-                ThreadManager.ExecuteOnMainThread(() =>
-                {
-                    using (Packet _packet = new Packet(packetBytes))
+                    for (int i = 1; i <= maxServerConnections; i++)
                     {
-                        int _packetID = _packet.ReadInt();
-                    }
-                });
+                        if (Servers[i].Transport.socket == null)
+                        {
+                            Servers[i].Transport.Connect(client);
+                            Console.WriteLine($"Server - {i} is connected");
+                            foreach (var entry in Servers)
+                            {
+                                if (entry.Value.Transport.socket == null)
+                                {
+                                    return;
+                                }
+                                Console.WriteLine($"All servers are connected, listening to clients...");
+                                serversReady = true;
+                            }
+                            return;
+                        }
 
-                packetLength = 0;
-                if (receivedPacket.UnreadLength() >= 4)
-                {
-                    packetLength = receivedPacket.ReadInt();
-                    if (packetLength <= 0)
-                    {
-                        return true;
+                        Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect, something is wrong");
                     }
                 }
+                else
+                {
+                    Console.WriteLine($"Foreign IP tried to connect whilst listening for local servers...");
+                }
             }
-            if (packetLength <= 1)
+            else
             {
-                return true;
-            }
+                for (int i = 1; i <= maxClientConnections; i++)
+                {
+                    if (Clients[i].Transport.socket == null)
+                    {
+                        Clients[i].Transport.Connect(client);
+                        return;
+                    }
 
-            return false;
+                    Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect: server is full!");
+                }
+            }
         }
 
         private void InitializeServerData()
         {
-            for (int i = 1; i < maxPlayer; i++)
+            for (int i = 1; i < maxServerConnections; i++)
             {
-                clients.Add(i, new Client(i));
+                Servers.Add(i, new(i, true));
             }
+        }
 
-            serverPacketsHandler = new()
+        private void InitializeClientData()
+        {
+            for (int i = 1; i < maxClientConnections; i++)
             {
-                { (int)ServerMatchmakerPackets.initialization, ServerHandle.HandleInitReply },
-                { (int)ServerMatchmakerPackets.updateReply, ServerHandle.HandleUpdateReply },
-                { (int)ServerMatchmakerPackets.terminationReply, ServerHandle.HandleTerminationReply }
-            };
-
-            clientPacketsHandler = new()
-            {
-                { (int)ClientMatchmakerPackets.updateRequest, ClientHandle.ClientHandleUpdate }
+                Clients.Add(i, new(i));
             }
         }
     }

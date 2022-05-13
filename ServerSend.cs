@@ -16,7 +16,7 @@ namespace iSpyMatchmaker
         {
             using (Packet packet = new((int)MatchmakerServerPackets.terminationRequest))
             {
-                SendTCPData(_id, packet);
+                SendTCPData(_id, packet, true);
             }
         }
     }

@@ -23,6 +23,7 @@ namespace iSpyMatchmaker
 
             // add new server entry in database
             RoomHandler.Entries.TryAdd(_senderID, newEntry);
+            Console.WriteLine($"Server({_senderID}): handled initialization packet");
         }
 
         /// <summary>
@@ -47,9 +48,10 @@ namespace iSpyMatchmaker
             temp.UpdateEntry(newPlayerCount);
             temp.UpdateEntry(newRunning);
             RoomHandler.Entries[_senderID] = temp;
+            Console.WriteLine($"Server({_senderID}): handled update packet");
 
-            // broadcast database change to all clients
-            ClientSend.UpdateClient();
+            // broadcast update to every connected clients
+            ClientSend.SendUpdate();
         }
 
         /// <summary>
@@ -65,6 +67,7 @@ namespace iSpyMatchmaker
                 RoomHandler.Singleton.TerminateRoom(RoomHandler.Entries[_senderID].Port);
                 RoomHandler.Entries.Remove(_senderID);
             }
+            Console.WriteLine($"Server({_senderID}): handled termination packet");
         }
     }
 }

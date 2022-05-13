@@ -15,6 +15,7 @@ namespace iSpyMatchmaker
         private int playerCount;
         private int maxPlayer;
         private bool running;
+        private bool updated;
 
         /// <summary>
         /// Server's port
@@ -35,6 +36,11 @@ namespace iSpyMatchmaker
         /// Server's current running state
         /// </summary>
         public bool Running => running;
+
+        /// <summary>
+        /// Tag to keep track whether this entry has been updated
+        /// </summary>
+        public bool Updated => updated;
 
         public ServerDataEntry(ServerDataEntry clone)
         {
@@ -57,6 +63,7 @@ namespace iSpyMatchmaker
         /// <param name="newCount">new player count</param>
         public void UpdateEntry(int newCount)
         {
+            updated = true;
             playerCount = newCount;
         }
 
@@ -66,7 +73,16 @@ namespace iSpyMatchmaker
         /// <param name="isRunning">new state</param>
         public void UpdateEntry(bool isRunning)
         {
+            updated = true;
             running = isRunning;
+        }
+
+        /// <summary>
+        /// Called when the entry has been broadcasted
+        /// </summary>
+        public void Broadcasted()
+        {
+            updated = false;
         }
     }
 }

@@ -12,9 +12,9 @@ namespace iSpyMatchmaker
         /// Sends the latest database update to a single client
         /// </summary>
         /// <param name="_id">client's id</param>
-        public static void UpdateClient(int _id)
+        public static void SendInit(int _id)
         {
-            using Packet packet = new((int)MatchmakerClientPackets.updateReply);
+            using Packet packet = new((int)MatchmakerClientPackets.init);
             // Write entry count
             packet.Write(RoomHandler.Entries.Count);
 
@@ -23,36 +23,52 @@ namespace iSpyMatchmaker
             {
                 // Write port
                 packet.Write(RoomHandler.Entries[i].Port);
-                // Write player count
-                packet.Write(RoomHandler.Entries[i].PlayerCount);
-                // Write server running state
-                packet.Write(RoomHandler.Entries[i].Running);
+                // Write max player count
+                packet.Write(RoomHandler.Entries[i].MaxPlayer);
             }
 
-            SendTCPData(_id, packet, false);
+            SendTCPData(_id, packet);
+
+            Console.WriteLine($"Client({_id}): sent an init packet");
         }
 
         /// <summary>
         /// Sends the latest database update to all connected clients
         /// </summary>
-        public static void UpdateClient()
+        public static void SendUpdate()
         {
-            using Packet packet = new((int)MatchmakerClientPackets.updateReply);
-            // Write entry count
-            packet.Write(RoomHandler.Entries.Count);
+            using Packet packet = new((int)MatchmakerClientPackets.update);
 
-            // Write entries
-            for (int i = 0; i < RoomHandler.Entries.Count; i++)
+            // check how many entries are updated
+            int updatedCount = 0;
+            foreach (var entry in RoomHandler.Entries)
             {
-                // Write port
-                packet.Write(RoomHandler.Entries[i].Port);
-                // Write player count
-                packet.Write(RoomHandler.Entries[i].PlayerCount);
-                // Write server running state
-                packet.Write(RoomHandler.Entries[i].Running);
+                if (entry.Value.Updated)
+                {
+                    updatedCount += 1;
+                }
             }
 
-            SendTCPDataToAll(packet, false);
+            // write updated count
+            packet.Write(updatedCount);
+
+            // check which of all entries are updated
+            for (int i = 0; i < RoomHandler.Entries.Count; i++)
+            {
+                if (RoomHandler.Entries[i].Updated)
+                {
+                    // write updated entry index
+                    packet.Write(i);
+                    // Write updated entry player count
+                    packet.Write(RoomHandler.Entries[i].PlayerCount);
+                    // Write updated entry running state
+                    packet.Write(RoomHandler.Entries[i].Running);
+                }
+            }
+
+            SendTCPDataToAll(packet);
+
+            Console.WriteLine($"Broadcasted update to all connected clients");
         }
     }
 }

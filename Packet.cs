@@ -31,7 +31,7 @@ namespace iSpyMatchmaker
     /// </summary>
     public enum MatchmakerClientPackets
     {
-        updateReply
+        init, update
     }
 
     /// <summary>

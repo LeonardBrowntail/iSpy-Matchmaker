@@ -16,7 +16,7 @@ namespace iSpyMatchmaker
         public static void HandleUpdate(int _senderID, Packet _packet)
         {
             Console.WriteLine($"Client {_senderID} requested update");
-            ClientSend.UpdateClient(_senderID);
+            ClientSend.SendInit(_senderID);
         }
     }
 }

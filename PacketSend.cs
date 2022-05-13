@@ -14,7 +14,7 @@ namespace iSpyMatchmaker
         /// <param name="_receiverID">receiver's id</param>
         /// <param name="_packet">packet to be sent</param>
         /// <param name="server"><c>false</c>, for client</param>
-        protected static void SendTCPData(int _receiverID, Packet _packet, bool server = true)
+        protected static void SendTCPData(int _receiverID, Packet _packet, bool server = false)
         {
             _packet.WriteLength();
             if (server)
@@ -33,7 +33,7 @@ namespace iSpyMatchmaker
         /// </summary>
         /// <param name="_packet">packet to send</param>
         /// <param name="server"><c>false</c>, for clients</param>
-        protected static void SendTCPDataToAll(Packet _packet, bool server = true)
+        protected static void SendTCPDataToAll(Packet _packet, bool server = false)
         {
             _packet.WriteLength();
             if (server)
@@ -59,7 +59,7 @@ namespace iSpyMatchmaker
         /// <param name="_receiverID">id to be ignored</param>
         /// <param name="_packet">packet to be sent</param>
         /// <param name="server"><c>false</c>, for clients</param>
-        protected static void SendTCPDataExcept(int _receiverID, Packet _packet, bool server = true)
+        protected static void SendTCPDataExcept(int _receiverID, Packet _packet, bool server = false)
         {
             _packet.WriteLength();
             if (server)

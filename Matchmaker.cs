@@ -20,17 +20,17 @@ namespace iSpyMatchmaker
         private int maxClientConnections;
         private int maxServerConnections;
         private bool serversReady = false;
-        private TcpListener server;
+        private TcpListener matchmakerServer;
 
-        public int MaxServer => maxServerConnections;
+        public int Port => port;
 
         /// <summary>
-        /// Dictionary to keep track of servers connected
+        /// Dictionary to keep track of Unity servers connected
         /// </summary>
         private Dictionary<int, Client> servers = new();
 
         /// <summary>
-        /// Dictionary to keep track of clients connected
+        /// Dictionary to keep track of Unity clients connected
         /// </summary>
         private Dictionary<int, Client> clients = new();
 
@@ -57,6 +57,7 @@ namespace iSpyMatchmaker
             maxServerConnections = _serverCount;
             port = _port;
             initialized = true;
+            Console.WriteLine($"Matchmaker initialized, serverCount = {maxServerConnections}, port = {port}");
         }
 
         /// <summary>
@@ -75,12 +76,12 @@ namespace iSpyMatchmaker
             InitializeServerData();
             InitializeClientData();
 
-            server = new(IPAddress.Any, port);
-            server.Start();
+            matchmakerServer = new(IPAddress.Any, port);
+            matchmakerServer.Start();
 
-            Console.WriteLine($"Please refrain any connections from outside");
-            server.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
-            Console.WriteLine($"Server started on {server.Server.RemoteEndPoint}: {port}...");
+            Console.WriteLine($"Server started on {matchmakerServer.Server.RemoteEndPoint}: {port}...");
+            Console.WriteLine($"Please hold any connections from outside except from Unity Servers...");
+            matchmakerServer.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
         }
 
         /// <summary>
@@ -89,71 +90,108 @@ namespace iSpyMatchmaker
         /// <param name="res"></param>
         private void TcpConnectCallback(IAsyncResult res)
         {
-            var client = server.EndAcceptTcpClient(res);
-            Console.WriteLine($"Incoming connection from {client.Client.RemoteEndPoint}...");
-            server.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
-
-            if (!serversReady)
+            try
             {
-                var remote = (IPEndPoint)client.Client.RemoteEndPoint;
-                var local = (IPEndPoint)client.Client.LocalEndPoint;
-                if (remote.Address == local.Address)
-                {
-                    for (int i = 1; i <= maxServerConnections; i++)
-                    {
-                        if (Servers[i].Transport.socket == null)
-                        {
-                            Servers[i].Transport.Connect(client);
-                            Console.WriteLine($"Server - {i} is connected");
-                            foreach (var entry in Servers)
-                            {
-                                if (entry.Value.Transport.socket == null)
-                                {
-                                    return;
-                                }
-                                Console.WriteLine($"All servers are connected, listening to clients...");
-                                serversReady = true;
-                            }
-                            return;
-                        }
+                var client = matchmakerServer.EndAcceptTcpClient(res);
+                Console.WriteLine($"Incoming connection from {client.Client.RemoteEndPoint}...");
+                matchmakerServer.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
 
-                        Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect, something is wrong");
+                if (!serversReady)
+                {
+                    var remote = (IPEndPoint)client.Client.RemoteEndPoint;
+                    var local = (IPEndPoint)client.Client.LocalEndPoint;
+                    if (remote.Address == local.Address)
+                    {
+                        for (int i = 1; i <= maxServerConnections; i++)
+                        {
+                            if (Servers[i].Transport.socket == null)
+                            {
+                                Servers[i].Transport.Connect(client);
+                                Console.WriteLine($"Server - {i} is connected");
+                                foreach (var entry in Servers)
+                                {
+                                    if (entry.Value.Transport.socket == null)
+                                    {
+                                        return;
+                                    }
+                                    Console.WriteLine($"All servers are connected, listening to clients...");
+                                    serversReady = true;
+                                }
+                                return;
+                            }
+
+                            Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect, something is wrong");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Foreign IP tried to connect whilst listening for local Unity servers...");
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Foreign IP tried to connect whilst listening for local servers...");
+                    for (int i = 1; i <= maxClientConnections; i++)
+                    {
+                        if (Clients[i].Transport.socket == null)
+                        {
+                            Clients[i].Transport.Connect(client);
+                            return;
+                        }
+
+                        Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect: server is full!");
+                    }
                 }
             }
-            else
+            catch (Exception e)
             {
-                for (int i = 1; i <= maxClientConnections; i++)
-                {
-                    if (Clients[i].Transport.socket == null)
-                    {
-                        Clients[i].Transport.Connect(client);
-                        return;
-                    }
-
-                    Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect: server is full!");
-                }
+                Console.WriteLine(e.ToString());
             }
         }
 
+        /// <summary>
+        /// Initialize a list of connections to Unity servers and their ids
+        /// </summary>
         private void InitializeServerData()
         {
             for (int i = 1; i < maxServerConnections; i++)
             {
                 Servers.Add(i, new(i, true));
             }
+            Console.WriteLine($"Server connection list initialized");
         }
 
+        /// <summary>
+        /// Initialize a list of connections to Unity clients and their ids
+        /// </summary>
         private void InitializeClientData()
         {
             for (int i = 1; i < maxClientConnections; i++)
             {
                 Clients.Add(i, new(i));
             }
+            Console.WriteLine($"Client connection list initialized");
+        }
+
+        public void Stop()
+        {
+            foreach (var item in clients)
+            {
+                if (item.Value.Transport.socket != null)
+                {
+                    item.Value.Disconnect();
+                }
+            }
+            foreach (var item in servers)
+            {
+                if (item.Value.Transport.socket != null)
+                {
+                    item.Value.Disconnect();
+                }
+            }
+            clients = null;
+            servers = null;
+            matchmakerServer.Stop();
+            Console.WriteLine($"Matchmaker: stopped everything");
         }
     }
 }

@@ -52,6 +52,7 @@ namespace iSpyMatchmaker
             id = _clientId;
             isServer = _isServer;
             tcp = new(_clientId, _isServer);
+            Console.WriteLine($"Created a new {(isServer ? "server" : "client")} connection (id = {id})");
         }
 
         /// <summary>
@@ -112,6 +113,7 @@ namespace iSpyMatchmaker
 
                 receiveBuffer = new byte[dataBufferSize];
 
+                Console.WriteLine($"Listening for packets from {(isServer ? "server" : "client")}({id})...");
                 stream.BeginRead(receiveBuffer, 0, dataBufferSize, ReceiveCallback, null);
             }
 
@@ -133,6 +135,7 @@ namespace iSpyMatchmaker
             /// </remarks>
             private void ReceiveCallback(IAsyncResult _result)
             {
+                Console.WriteLine($"Received a packet from {(isServer ? "server" : "client")}({id})!");
                 try
                 {
                     int _bytelength = stream.EndRead(_result);
@@ -176,6 +179,7 @@ namespace iSpyMatchmaker
             /// <param name="dataStream">packet to be sent</param>
             public void SendData(Packet dataStream)
             {
+                Console.WriteLine($"{(isServer ? "server" : "client")}({id}): sending a TCP packet!");
                 try
                 {
                     if (socket != null)
@@ -249,6 +253,10 @@ namespace iSpyMatchmaker
                 return false;
             }
 
+            /// <summary>
+            /// Initializes packet handlers
+            /// </summary>
+            /// <param name="_isServer"></param>
             private void InitializeData(bool _isServer)
             {
                 if (_isServer)
@@ -260,6 +268,7 @@ namespace iSpyMatchmaker
                         { (int)ServerMatchmakerPackets.updateReply, ServerHandle.HandleUpdateReply },
                         { (int)ServerMatchmakerPackets.terminationReply, ServerHandle.HandleTerminationReply }
                     };
+                    Console.WriteLine($"Initialized packet handlers for server-{id}");
                 }
                 else
                 {
@@ -268,13 +277,14 @@ namespace iSpyMatchmaker
                     {
                         { (int)ClientMatchmakerPackets.updateRequest, ClientHandle.HandleUpdate }
                     };
+                    Console.WriteLine($"Initialized packet handlers for client-{id}");
                 }
             }
         }
 
         public void Disconnect()
         {
-            Console.WriteLine($"{(isServer ? "server" : "client")}-{id} ({tcp.socket.Client.RemoteEndPoint}) has disconnected...");
+            Console.WriteLine($"{(isServer ? "server" : "client")}({id}): ({tcp.socket.Client.RemoteEndPoint}) has disconnected...");
 
             tcp.Disconnect();
         }

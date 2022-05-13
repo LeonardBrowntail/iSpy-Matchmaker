@@ -3,11 +3,14 @@ using System.Threading;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace iSpyMatchmaker
 {
     internal class Program
     {
+        private static bool exitSystem = false;
+
         //Matchmaker server
         private static readonly ushort matchmakerPort = 7777;
 
@@ -22,14 +25,25 @@ namespace iSpyMatchmaker
             Console.WriteLine($"How many rooms do you want to open?");
             string roomCount = Console.ReadLine();
 
-            Matchmaker.Singleton.Initialize(50, 7777);
-            RoomHandler.Singleton.Initialize(roomCount);
-
-            //todo: run a room once, wait for connection, run again
-
             isRunning = true;
-
             Thread mainThread = new(new ThreadStart(MainThread));
+            mainThread.Start();
+
+            Matchmaker.Singleton.Initialize(50, matchmakerPort);
+            Matchmaker.Singleton.Start();
+            RoomHandler.Singleton.Initialize(programName);
+            RoomHandler.Singleton.OpenRooms(int.Parse(roomCount));
+
+            string input;
+            do
+            {
+                input = Console.ReadLine();
+            } while (input != "quit");
+
+            Matchmaker.Singleton.Stop();
+            RoomHandler.Singleton.Close();
+
+            Environment.Exit(-1);
         }
 
         private static void MainThread()

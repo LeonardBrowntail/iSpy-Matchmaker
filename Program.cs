@@ -9,8 +9,6 @@ namespace iSpyMatchmaker
 {
     internal class Program
     {
-        private static bool exitSystem = false;
-
         //Matchmaker server
         private static readonly ushort matchmakerPort = 7777;
 
@@ -29,7 +27,7 @@ namespace iSpyMatchmaker
             Thread mainThread = new(new ThreadStart(MainThread));
             mainThread.Start();
 
-            Matchmaker.Singleton.Initialize(50, matchmakerPort);
+            Matchmaker.Singleton.Initialize(int.Parse(roomCount), matchmakerPort);
             Matchmaker.Singleton.Start();
             RoomHandler.Singleton.Initialize(programName);
             RoomHandler.Singleton.OpenRooms(int.Parse(roomCount));

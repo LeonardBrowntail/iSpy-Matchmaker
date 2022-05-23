@@ -82,10 +82,10 @@ namespace iSpyMatchmaker
             private delegate void PacketHandler(int _senderID, Packet _packet);
 
             // Server handling
-            private static Dictionary<int, PacketHandler> serverPacketsHandler = null;
+            private Dictionary<int, PacketHandler> serverPacketsHandler = null;
 
             // Client handling
-            private static Dictionary<int, PacketHandler> clientPacketsHandler = null;
+            private Dictionary<int, PacketHandler> clientPacketsHandler = null;
 
             public TCP(int _id, bool _isServer)
             {
@@ -111,6 +111,7 @@ namespace iSpyMatchmaker
 
                 stream = socket.GetStream();
 
+                receivedPacket = new Packet();
                 receiveBuffer = new byte[dataBufferSize];
 
                 Console.WriteLine($"Listening for packets from {(isServer ? "server" : "client")}({id})...");
@@ -138,6 +139,7 @@ namespace iSpyMatchmaker
                 Console.WriteLine($"Received a packet from {(isServer ? "server" : "client")}({id})!");
                 try
                 {
+                    if (stream == null) return;
                     int _bytelength = stream.EndRead(_result);
                     if (_bytelength <= 0)
                     {
@@ -161,14 +163,16 @@ namespace iSpyMatchmaker
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Exception thrown: {e}");
+                    Console.WriteLine($"Exception thrown: {e.Message}");
                     if (isServer)
                     {
-                        Matchmaker.Servers[id].Disconnect();
+                        if (Matchmaker.Servers != null)
+                            Matchmaker.Servers[id].Disconnect();
                     }
                     else
                     {
-                        Matchmaker.Clients[id].Disconnect();
+                        if (Matchmaker.Clients != null)
+                            Matchmaker.Clients[id].Disconnect();
                     }
                 }
             }
@@ -179,7 +183,6 @@ namespace iSpyMatchmaker
             /// <param name="dataStream">packet to be sent</param>
             public void SendData(Packet dataStream)
             {
-                Console.WriteLine($"{(isServer ? "server" : "client")}({id}): sending a TCP packet!");
                 try
                 {
                     if (socket != null)
@@ -189,7 +192,7 @@ namespace iSpyMatchmaker
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Error sending data to matchmaker: {e}");
+                    Console.WriteLine($"Error sending data to client: {e}");
                 }
             }
 
@@ -225,6 +228,7 @@ namespace iSpyMatchmaker
                     {
                         using Packet _packet = new(packetBytes);
                         int _packetID = _packet.ReadInt();
+                        Console.WriteLine($"Packet id = {_packetID}");
                         if (isServer)
                         {
                             serverPacketsHandler[_packetID](id, _packet);

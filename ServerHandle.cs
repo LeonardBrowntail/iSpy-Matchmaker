@@ -14,16 +14,23 @@ namespace iSpyMatchmaker
         /// <param name="_packet">packet to be read</param>
         public static void HandleInitReply(int _senderID, Packet _packet)
         {
-            // read port
-            var newPort = (ushort)_packet.ReadInt();
-            // read max player count
-            var maxPlayers = _packet.ReadInt();
-            // create a new server entry
-            var newEntry = new ServerDataEntry(newPort, maxPlayers);
+            try
+            {
+                // read port
+                var newPort = (ushort)_packet.ReadInt();
+                // read max player count
+                var maxPlayers = _packet.ReadInt();
+                // create a new server entry
+                var newEntry = new ServerDataEntry(newPort, maxPlayers);
 
-            // add new server entry in database
-            RoomHandler.Entries.TryAdd(_senderID, newEntry);
-            Console.WriteLine($"Server({_senderID}): handled initialization packet");
+                // add new server entry in database
+                RoomHandler.Entries.Add(_senderID, newEntry);
+                Console.WriteLine($"Server({_senderID}): handled initialization packet");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error when handling Init packet from server-{_senderID}, {e.Message}");
+            }
         }
 
         /// <summary>

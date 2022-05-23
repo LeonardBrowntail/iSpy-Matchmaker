@@ -53,7 +53,7 @@ namespace iSpyMatchmaker
             packet.Write(updatedCount);
 
             // check which of all entries are updated
-            for (int i = 0; i < RoomHandler.Entries.Count; i++)
+            for (int i = 1; i <= RoomHandler.Entries.Count; i++)
             {
                 if (RoomHandler.Entries[i].Updated)
                 {

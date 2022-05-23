@@ -66,6 +66,7 @@ namespace iSpyMatchmaker
         {
             roomName = programName;
             ResetRoomDict();
+            ResetEntryDatabase();
 
             initialized = true;
         }
@@ -100,12 +101,8 @@ namespace iSpyMatchmaker
         /// </summary>
         private void ResetRoomDict()
         {
-            if (rooms == null)
-            {
-                rooms = new Dictionary<int, Process>();
-                Console.WriteLine($"Room dictionary doesn't exist yet, creating...");
-            }
-            else if (rooms.Count > 0)
+            if (rooms == null) rooms = new Dictionary<int, Process>();
+            if (rooms.Count > 0)
             {
                 foreach (var room in rooms)
                 {
@@ -114,6 +111,16 @@ namespace iSpyMatchmaker
                 rooms.Clear();
             }
             Console.WriteLine($"Room dictionary reset!");
+        }
+
+        private void ResetEntryDatabase()
+        {
+            if (rooms_entry == null) rooms_entry = new();
+            if (rooms_entry.Count > 0)
+            {
+                rooms_entry.Clear();
+            }
+            Console.WriteLine($"Database dictionary reset!");
         }
 
         public void TerminateRoom(int id)

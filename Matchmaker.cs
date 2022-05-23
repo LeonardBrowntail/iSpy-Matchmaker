@@ -70,7 +70,9 @@ namespace iSpyMatchmaker
             if (!initialized)
             {
                 Console.WriteLine($"Mmatchmaker is not yet initialized");
+                return;
             }
+
             // Initialize server data
             Console.WriteLine($"Server starting...");
             InitializeServerData();
@@ -79,7 +81,7 @@ namespace iSpyMatchmaker
             matchmakerServer = new(IPAddress.Any, port);
             matchmakerServer.Start();
 
-            Console.WriteLine($"Server started on {matchmakerServer.Server.RemoteEndPoint}: {port}...");
+            Console.WriteLine($"Server started on {matchmakerServer.Server.LocalEndPoint}...");
             Console.WriteLine($"Please hold any connections from outside except from Unity Servers...");
             matchmakerServer.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
         }
@@ -98,34 +100,15 @@ namespace iSpyMatchmaker
 
                 if (!serversReady)
                 {
-                    var remote = (IPEndPoint)client.Client.RemoteEndPoint;
-                    var local = (IPEndPoint)client.Client.LocalEndPoint;
-                    if (remote.Address == local.Address)
+                    for (int i = 1; i <= maxServerConnections; i++)
                     {
-                        for (int i = 1; i <= maxServerConnections; i++)
+                        if (Servers[i].Transport.socket == null)
                         {
-                            if (Servers[i].Transport.socket == null)
-                            {
-                                Servers[i].Transport.Connect(client);
-                                Console.WriteLine($"Server - {i} is connected");
-                                foreach (var entry in Servers)
-                                {
-                                    if (entry.Value.Transport.socket == null)
-                                    {
-                                        return;
-                                    }
-                                    Console.WriteLine($"All servers are connected, listening to clients...");
-                                    serversReady = true;
-                                }
-                                return;
-                            }
-
-                            Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect, something is wrong");
+                            Servers[i].Transport.Connect(client);
+                            Console.WriteLine($"Server - {i} is registered");
+                            return;
                         }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Foreign IP tried to connect whilst listening for local Unity servers...");
+                        Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect, something is wrong");
                     }
                 }
                 else
@@ -135,6 +118,7 @@ namespace iSpyMatchmaker
                         if (Clients[i].Transport.socket == null)
                         {
                             Clients[i].Transport.Connect(client);
+                            Console.WriteLine($"Client - {i} is registered");
                             return;
                         }
 
@@ -144,7 +128,7 @@ namespace iSpyMatchmaker
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine(e.Message);
             }
         }
 
@@ -153,11 +137,11 @@ namespace iSpyMatchmaker
         /// </summary>
         private void InitializeServerData()
         {
-            for (int i = 1; i < maxServerConnections; i++)
+            for (int i = 1; i <= maxServerConnections; i++)
             {
                 Servers.Add(i, new(i, true));
             }
-            Console.WriteLine($"Server connection list initialized");
+            Console.WriteLine($"Server connection list initialized\n----------------------------------");
         }
 
         /// <summary>
@@ -165,11 +149,11 @@ namespace iSpyMatchmaker
         /// </summary>
         private void InitializeClientData()
         {
-            for (int i = 1; i < maxClientConnections; i++)
+            for (int i = 1; i <= maxClientConnections; i++)
             {
                 Clients.Add(i, new(i));
             }
-            Console.WriteLine($"Client connection list initialized");
+            Console.WriteLine($"Client connection list initialized\n----------------------------------");
         }
 
         public void Stop()

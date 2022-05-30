@@ -14,23 +14,16 @@ namespace iSpyMatchmaker
         /// <param name="_packet">packet to be read</param>
         public static void HandleInitReply(int _senderID, Packet _packet)
         {
-            try
-            {
-                // read port
-                var newPort = (ushort)_packet.ReadInt();
-                // read max player count
-                var maxPlayers = _packet.ReadInt();
-                // create a new server entry
-                var newEntry = new ServerDataEntry(newPort, maxPlayers);
+            // read port
+            var newPort = (ushort)_packet.ReadInt();
+            // read max player count
+            var maxPlayers = _packet.ReadInt();
+            // create a new server entry
+            var newEntry = new ServerDataEntry(newPort, maxPlayers);
 
-                // add new server entry in database
-                RoomHandler.Entries.Add(_senderID, newEntry);
-                Console.WriteLine($"Server({_senderID}): handled initialization packet");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error when handling Init packet from server-{_senderID}, {e.Message}");
-            }
+            // add new server entry in database only if it doesn't already exist
+            if (!RoomHandler.Singleton.Entries.ContainsKey(_senderID)) RoomHandler.Singleton.Entries.Add(_senderID, newEntry);
+            Console.WriteLine($"Server({_senderID}): handled initialization packet");
         }
 
         /// <summary>
@@ -46,15 +39,15 @@ namespace iSpyMatchmaker
             var newRunning = _packet.ReadBool();
 
             // update internal database
-            if (RoomHandler.Entries[_senderID] == null)
+            if (RoomHandler.Singleton.Entries[_senderID] == null)
             {
                 Console.WriteLine("Warning! Tried to update a non-existent entry!");
                 return;
             }
-            var temp = new ServerDataEntry(RoomHandler.Entries[_senderID]);
+            var temp = new ServerDataEntry(RoomHandler.Singleton.Entries[_senderID]);
             temp.UpdateEntry(newPlayerCount);
             temp.UpdateEntry(newRunning);
-            RoomHandler.Entries[_senderID] = temp;
+            RoomHandler.Singleton.Entries[_senderID] = temp;
             Console.WriteLine($"Server({_senderID}): handled update packet");
 
             // broadcast update to every connected clients
@@ -69,10 +62,10 @@ namespace iSpyMatchmaker
         public static void HandleTerminationReply(int _senderID, Packet _packet)
         {
             // terminate rooms
-            if (RoomHandler.Entries[_senderID] != null)
+            if (RoomHandler.Singleton.Entries[_senderID] != null)
             {
-                RoomHandler.Singleton.TerminateRoom(RoomHandler.Entries[_senderID].Port);
-                RoomHandler.Entries.Remove(_senderID);
+                RoomHandler.Singleton.TerminateRoom(RoomHandler.Singleton.Entries[_senderID].Port);
+                RoomHandler.Singleton.Entries.Remove(_senderID);
             }
             Console.WriteLine($"Server({_senderID}): handled termination packet");
         }

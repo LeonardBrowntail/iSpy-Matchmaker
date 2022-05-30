@@ -14,10 +14,8 @@ namespace iSpyMatchmaker
         /// <param name="_id">server's id</param>
         public static void TerminateServer(int _id)
         {
-            using (Packet packet = new((int)MatchmakerServerPackets.terminationRequest))
-            {
-                SendTCPData(_id, packet, true);
-            }
+            using Packet packet = new((int)MatchmakerServerPackets.terminationRequest);
+            SendTCPData(_id, packet, true);
         }
     }
 }

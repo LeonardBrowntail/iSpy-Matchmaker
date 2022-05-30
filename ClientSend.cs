@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace iSpyMatchmaker
 {
+    /// <summary>
+    /// Class with client's packet sending functions
+    /// </summary>
     internal class ClientSend : PacketSend
     {
         /// <summary>
@@ -16,15 +19,15 @@ namespace iSpyMatchmaker
         {
             using Packet packet = new((int)MatchmakerClientPackets.init);
             // Write entry count
-            packet.Write(RoomHandler.Entries.Count);
+            packet.Write(RoomHandler.Singleton.Entries.Count);
 
             // Write entries
-            for (int i = 0; i < RoomHandler.Entries.Count; i++)
+            for (int i = 1; i <= RoomHandler.Singleton.Entries.Count; i++)
             {
                 // Write port
-                packet.Write(RoomHandler.Entries[i].Port);
+                packet.Write(RoomHandler.Singleton.Entries[i].Port);
                 // Write max player count
-                packet.Write(RoomHandler.Entries[i].MaxPlayer);
+                packet.Write(RoomHandler.Singleton.Entries[i].MaxPlayer);
             }
 
             SendTCPData(_id, packet);
@@ -41,7 +44,7 @@ namespace iSpyMatchmaker
 
             // check how many entries are updated
             int updatedCount = 0;
-            foreach (var entry in RoomHandler.Entries)
+            foreach (var entry in RoomHandler.Singleton.Entries)
             {
                 if (entry.Value.Updated)
                 {
@@ -53,17 +56,24 @@ namespace iSpyMatchmaker
             packet.Write(updatedCount);
 
             // check which of all entries are updated
-            for (int i = 1; i <= RoomHandler.Entries.Count; i++)
+            for (int i = 1; i <= RoomHandler.Singleton.Entries.Count; i++)
             {
-                if (RoomHandler.Entries[i].Updated)
+                if (RoomHandler.Singleton.Entries[i].Updated)
                 {
-                    // write updated entry index
-                    packet.Write(i);
+                    // write updated entry port
+                    packet.Write(RoomHandler.Singleton.Entries[i].Port);
                     // Write updated entry player count
-                    packet.Write(RoomHandler.Entries[i].PlayerCount);
+                    packet.Write(RoomHandler.Singleton.Entries[i].PlayerCount);
                     // Write updated entry running state
-                    packet.Write(RoomHandler.Entries[i].Running);
+                    packet.Write(RoomHandler.Singleton.Entries[i].Running);
                 }
+            }
+
+            // resets updated state of each updated entries
+            foreach (var entry in RoomHandler.Singleton.Entries)
+            {
+                if (entry.Value.Updated)
+                    entry.Value.Broadcasted();
             }
 
             SendTCPDataToAll(packet);

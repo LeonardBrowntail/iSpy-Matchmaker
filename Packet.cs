@@ -39,7 +39,7 @@ namespace iSpyMatchmaker
     /// </summary>
     public enum ClientMatchmakerPackets
     {
-        updateRequest
+        updateRequest, disconnect
     }
 
     #endregion Client-Matchmaker Packets

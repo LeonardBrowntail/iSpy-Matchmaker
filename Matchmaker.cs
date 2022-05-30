@@ -10,16 +10,42 @@ namespace iSpyMatchmaker
     /// </summary>
     internal class Matchmaker
     {
+        /// <summary>
+        /// The one and only matchmaker
+        /// </summary>
         private static Matchmaker singleton;
-        private bool initialized = false;
 
+        /// <summary>
+        /// The one and only matchmaker
+        /// </summary>
         public static Matchmaker Singleton
         { get { if (singleton == null) singleton = new Matchmaker(); return singleton; } }
 
+        /// <summary>
+        /// Is the matchmaker initialized
+        /// </summary>
+        private bool initialized = false;
+
+        /// <summary>
+        /// Matchmaker's listening port
+        /// </summary>
         private ushort port;
+
+        /// <summary>
+        /// The number of maximum client connection
+        /// </summary>
         private int maxClientConnections;
+
+        /// <summary>
+        /// The number of maximum server connections
+        /// </summary>
         private int maxServerConnections;
+
+        /// <summary>
+        ///
+        /// </summary>
         private bool serversReady = false;
+
         private TcpListener matchmakerServer;
 
         public int Port => port;
@@ -98,6 +124,7 @@ namespace iSpyMatchmaker
                 Console.WriteLine($"Incoming connection from {client.Client.RemoteEndPoint}...");
                 matchmakerServer.BeginAcceptTcpClient(new AsyncCallback(TcpConnectCallback), null);
 
+                // opens connections for servers
                 if (!serversReady)
                 {
                     for (int i = 1; i <= maxServerConnections; i++)
@@ -106,29 +133,36 @@ namespace iSpyMatchmaker
                         {
                             Servers[i].Transport.Connect(client);
                             Console.WriteLine($"Server - {i} is registered");
-                            return;
+                            break;
                         }
-                        Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect, something is wrong");
                     }
+                    // do a check whether the server connection slots are exhausted, if yes, then the server connections are ready.
+                    serversReady = true;
+                    foreach (var item in Servers)
+                    {
+                        if (!item.Value.TransportInitialized) serversReady = false;
+                    }
+                    if (serversReady) Console.WriteLine("All servers has been registered");
                 }
                 else
                 {
+                    // after the server connections are ready, opens connections for clients
                     for (int i = 1; i <= maxClientConnections; i++)
                     {
                         if (Clients[i].Transport.socket == null)
                         {
                             Clients[i].Transport.Connect(client);
+                            ClientSend.SendInit(i);
                             Console.WriteLine($"Client - {i} is registered");
-                            return;
+                            break;
                         }
-
-                        Console.WriteLine($"{client.Client.RemoteEndPoint} failed to connect: server is full!");
+                        Console.WriteLine($"Client {client.Client.RemoteEndPoint} failed to connect: server is full!");
                     }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"Matchmaker: {e.Message}");
             }
         }
 
@@ -156,6 +190,9 @@ namespace iSpyMatchmaker
             Console.WriteLine($"Client connection list initialized\n----------------------------------");
         }
 
+        /// <summary>
+        /// Stops the matchmaker from listening and discards all connections
+        /// </summary>
         public void Stop()
         {
             foreach (var item in clients)

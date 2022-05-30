@@ -24,23 +24,9 @@ namespace iSpyMatchmaker
         /// </remarks>
         private readonly int id;
 
-        private bool isServer;
-        private TCP tcp;
+        public TCP Transport { get; private set; }
 
-        /// <summary>
-        /// Client's or Server's internal matchmaking ID
-        /// </summary>
-        /// <remarks>
-        /// Used in packet sending.
-        /// Unique for every connection, whether it is a server or a client.
-        /// Very important that no two connections to have the same id, otherwise packet sending would be a total mess.
-        /// However, a client and a server may have the same ID.
-        /// To differenciate between a client and a server, <c>isServer</c> bool is used.
-        /// </remarks>
-        public int ID => id;
-
-        public bool IsServer => isServer;
-        public TCP Transport => tcp;
+        public bool TransportInitialized { get => Transport.socket != null; }
 
         /// <summary>
         /// Creates a new client connection between matchmaker and client or server
@@ -50,9 +36,17 @@ namespace iSpyMatchmaker
         public Client(int _clientId, bool _isServer = false)
         {
             id = _clientId;
-            isServer = _isServer;
-            tcp = new(_clientId, _isServer);
-            Console.WriteLine($"Created a new {(isServer ? "server" : "client")} connection (id = {id})");
+            Transport = new(_clientId, _isServer);
+            Console.WriteLine($"Created a new {(_isServer ? "server" : "client")} connection (id = {id})");
+        }
+
+        public void Disconnect()
+        {
+            if (Transport == null) return;
+            if (Transport.socket == null) return;
+            Console.WriteLine($"{(Transport.IsServer ? "server" : "client")}({id}): ({Transport.socket.Client.RemoteEndPoint}) has disconnected...");
+
+            Transport.Disconnect();
         }
 
         /// <summary>
@@ -71,7 +65,7 @@ namespace iSpyMatchmaker
             /// <summary>
             /// This TCP's server tag, the same as client
             /// </summary>
-            private bool isServer;
+            public bool IsServer { get; private set; }
 
             // Packet handling
             private NetworkStream stream;
@@ -90,7 +84,7 @@ namespace iSpyMatchmaker
             public TCP(int _id, bool _isServer)
             {
                 id = _id;
-                isServer = _isServer;
+                IsServer = _isServer;
                 InitializeData(_isServer);
             }
 
@@ -114,13 +108,14 @@ namespace iSpyMatchmaker
                 receivedPacket = new Packet();
                 receiveBuffer = new byte[dataBufferSize];
 
-                Console.WriteLine($"Listening for packets from {(isServer ? "server" : "client")}({id})...");
+                Console.WriteLine($"Listening for packets from {(IsServer ? "server" : "client")}({id})...");
                 stream.BeginRead(receiveBuffer, 0, dataBufferSize, ReceiveCallback, null);
             }
 
             public void Disconnect()
             {
                 socket.Close();
+                socket.Dispose();
                 stream = null;
                 receivedPacket = null;
                 receiveBuffer = null;
@@ -136,14 +131,14 @@ namespace iSpyMatchmaker
             /// </remarks>
             private void ReceiveCallback(IAsyncResult _result)
             {
-                Console.WriteLine($"Received a packet from {(isServer ? "server" : "client")}({id})!");
+                Console.WriteLine($"Received a packet from {(IsServer ? "server" : "client")}({id})!");
                 try
                 {
                     if (stream == null) return;
                     int _bytelength = stream.EndRead(_result);
                     if (_bytelength <= 0)
                     {
-                        if (isServer)
+                        if (IsServer)
                         {
                             Matchmaker.Servers[id].Disconnect();
                         }
@@ -164,7 +159,7 @@ namespace iSpyMatchmaker
                 catch (Exception e)
                 {
                     Console.WriteLine($"Exception thrown: {e.Message}");
-                    if (isServer)
+                    if (IsServer)
                     {
                         if (Matchmaker.Servers != null)
                             Matchmaker.Servers[id].Disconnect();
@@ -229,7 +224,7 @@ namespace iSpyMatchmaker
                         using Packet _packet = new(packetBytes);
                         int _packetID = _packet.ReadInt();
                         Console.WriteLine($"Packet id = {_packetID}");
-                        if (isServer)
+                        if (IsServer)
                         {
                             serverPacketsHandler[_packetID](id, _packet);
                         }
@@ -279,18 +274,12 @@ namespace iSpyMatchmaker
                     serverPacketsHandler = null;
                     clientPacketsHandler = new()
                     {
-                        { (int)ClientMatchmakerPackets.updateRequest, ClientHandle.HandleUpdate }
+                        { (int)ClientMatchmakerPackets.updateRequest, ClientHandle.HandleUpdate },
+                        { (int)ClientMatchmakerPackets.disconnect, ClientHandle.HandleDisconnect }
                     };
                     Console.WriteLine($"Initialized packet handlers for client-{id}");
                 }
             }
-        }
-
-        public void Disconnect()
-        {
-            Console.WriteLine($"{(isServer ? "server" : "client")}({id}): ({tcp.socket.Client.RemoteEndPoint}) has disconnected...");
-
-            tcp.Disconnect();
         }
     }
 }

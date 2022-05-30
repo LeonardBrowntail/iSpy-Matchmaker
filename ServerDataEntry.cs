@@ -11,50 +11,54 @@ namespace iSpyMatchmaker
     /// </summary>
     internal class ServerDataEntry
     {
-        private ushort port;
-        private int playerCount;
-        private int maxPlayer;
-        private bool running;
-        private bool updated;
+        /// <summary>
+        /// Entry data: server's listening port
+        /// </summary>
+        public ushort Port { get; private set; }
 
         /// <summary>
-        /// Server's port
+        /// Entry data: server's current player count
         /// </summary>
-        public ushort Port => port;
+        public int PlayerCount { get; private set; }
 
         /// <summary>
-        /// Server's current player count
+        /// Entry data: server's maximum number of connections
         /// </summary>
-        public int PlayerCount => playerCount;
+        public int MaxPlayer { get; private set; }
 
         /// <summary>
-        /// Server's max player count
+        /// Entry data: server's current running state
         /// </summary>
-        public int MaxPlayer => maxPlayer;
+        public bool Running { get; private set; }
 
         /// <summary>
-        /// Server's current running state
+        /// This parameter is used only when handling an updated data
         /// </summary>
-        public bool Running => running;
+        public bool Updated { get; private set; }
 
         /// <summary>
-        /// Tag to keep track whether this entry has been updated
+        /// Clones an instance of <see cref="ServerDataEntry"/>
         /// </summary>
-        public bool Updated => updated;
-
+        /// <param name="clone"></param>
         public ServerDataEntry(ServerDataEntry clone)
         {
-            port = clone.Port;
-            playerCount = clone.PlayerCount;
-            maxPlayer = clone.MaxPlayer;
-            running = clone.Running;
+            Port = clone.Port;
+            PlayerCount = clone.PlayerCount;
+            MaxPlayer = clone.MaxPlayer;
+            Running = clone.Running;
         }
 
-        public ServerDataEntry(ushort newPort, int maxPlayers)
+        /// <summary>
+        /// Creates a new instance of <see cref="ServerDataEntry"/>
+        /// </summary>
+        /// <param name="_newPort">server's listening port</param>
+        /// <param name="_maxPlayers">server's max player</param>
+        public ServerDataEntry(ushort _newPort, int _maxPlayers)
         {
-            port = newPort;
-            playerCount = 0;
-            running = false;
+            Port = _newPort;
+            MaxPlayer = _maxPlayers;
+            PlayerCount = 0;
+            Running = false;
         }
 
         /// <summary>
@@ -63,8 +67,8 @@ namespace iSpyMatchmaker
         /// <param name="newCount">new player count</param>
         public void UpdateEntry(int newCount)
         {
-            updated = true;
-            playerCount = newCount;
+            Updated = true;
+            PlayerCount = newCount;
         }
 
         /// <summary>
@@ -73,8 +77,8 @@ namespace iSpyMatchmaker
         /// <param name="isRunning">new state</param>
         public void UpdateEntry(bool isRunning)
         {
-            updated = true;
-            running = isRunning;
+            Updated = true;
+            Running = isRunning;
         }
 
         /// <summary>
@@ -82,7 +86,17 @@ namespace iSpyMatchmaker
         /// </summary>
         public void Broadcasted()
         {
-            updated = false;
+            Updated = false;
+        }
+
+        /// <summary>
+        /// Prints the entry's data to the console
+        /// </summary>
+        /// <returns>a string of the entry's data</returns>
+        public override string ToString()
+        {
+            string s = $"port={Port}, playerCount={PlayerCount}, MaxPlayer={MaxPlayer}, Runnin={Running}, Updated={Updated}";
+            return s;
         }
     }
 }

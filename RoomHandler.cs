@@ -21,15 +21,15 @@ namespace iSpyMatchmaker
         // Instance variable
         private static RoomHandler singleton = null;
 
-        private bool initialized = false;
-
         public static RoomHandler Singleton
         { get { if (singleton == null) singleton = new(); return singleton; } }
+
+        private bool initialized = false;
 
         /// <summary>
         /// Matchmaker current directory
         /// </summary>
-        private readonly string filePath = Directory.GetCurrentDirectory();
+        private readonly string filePath = $"{Directory.GetCurrentDirectory()}\\server";
 
         /// <summary>
         /// 1st room port number is set to 1 + matchmaker's port
@@ -42,28 +42,26 @@ namespace iSpyMatchmaker
         private string roomName;
 
         /// <summary>
-        /// The number of rooms that are started by the matchmaker
-        /// </summary>
-        private int roomCount = 0;
-
-        /// <summary>
         /// List of rooms with their unique IDs
         /// </summary>
         private Dictionary<int, Process> rooms = null;
 
-        private Dictionary<int, ServerDataEntry> rooms_entry = null;
-
         /// <summary>
         /// Main database, contains the latest updated state for every connected servers
         /// </summary>
-        public static Dictionary<int, ServerDataEntry> Entries => singleton.rooms_entry;
+        public Dictionary<int, ServerDataEntry> Entries { get; private set; }
 
         private RoomHandler()
         {
         }
 
+        /// <summary>
+        /// Initialize <c>RoomHandler</c> singleton
+        /// </summary>
+        /// <param name="programName">Unity server build name</param>
         public void Initialize(string programName)
         {
+            if (string.IsNullOrEmpty(programName)) return;
             roomName = programName;
             ResetRoomDict();
             ResetEntryDatabase();
@@ -79,13 +77,15 @@ namespace iSpyMatchmaker
         {
             if (!initialized)
             {
-                Console.WriteLine($"Roomhandler is not yet initialized!");
+                Console.WriteLine($"=========================== Error! ===============================\n" +
+                    $"Roomhandler is not yet initialized!");
                 return;
             }
             ProcessStartInfo p_info = new()
             {
                 UseShellExecute = true,
-                FileName = roomName
+
+                FileName = $"{filePath}\\{roomName}"
             };
             Console.WriteLine($"Creating rooms...");
             for (int id = 0; id < _roomCount; id++)
@@ -106,85 +106,80 @@ namespace iSpyMatchmaker
             {
                 foreach (var room in rooms)
                 {
-                    room.Value.Kill(true);
+                    try
+                    {
+                        room.Value.Kill(true);
+                        room.Value.Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
                 }
                 rooms.Clear();
             }
             Console.WriteLine($"Room dictionary reset!");
         }
 
+        /// <summary>
+        /// Resets entry dictionary
+        /// </summary>
         private void ResetEntryDatabase()
         {
-            if (rooms_entry == null) rooms_entry = new();
-            if (rooms_entry.Count > 0)
+            if (Entries == null) Entries = new();
+            if (Entries.Count > 0)
             {
-                rooms_entry.Clear();
+                Entries.Clear();
             }
             Console.WriteLine($"Database dictionary reset!");
         }
 
+        /// <summary>
+        /// Terminates a room with a certain ID
+        /// </summary>
+        /// <param name="id">room's id</param>
         public void TerminateRoom(int id)
         {
             Matchmaker.Servers[id].Disconnect();
-            singleton.rooms[id].Kill();
-            singleton.rooms.Remove(id);
+            rooms[id].Kill();
+            rooms.Remove(id);
         }
 
+        /// <summary>
+        /// Cleans all room for disposal
+        /// </summary>
         public void Close()
         {
             ResetRoomDict();
             rooms = null;
-            rooms_entry = null;
+            Entries = null;
             Console.WriteLine($"Closing all rooms");
         }
 
-        //Deprecated
-        private int FindMissingPort(int[] arr, int length)
-        {
-            int a = 0, b = length - 1;
-            int mid = 0;
-            while ((b - a) > 1)
-            {
-                mid = (a + b) / 2;
-                if ((arr[a] - a) != (arr[mid] - mid))
-                {
-                    b = mid;
-                }
-                else if ((arr[b] - b) != (arr[mid] - mid))
-                {
-                    a = mid;
-                }
-            }
-            return (arr[a] + 1);
-        }
-
         /// <summary>
-        /// Opens a room and assign its port
+        /// Checks whether the directory and the server build exists
         /// </summary>
-        public void OpenRoom()
+        /// <returns><see langword="true"/>, if the directory and server program exists</returns>
+        public bool ProgramCheck(string _programName)
         {
-            if (!initialized)
+            // checks if the directory exists
+            if (!Directory.Exists(filePath))
             {
-                Console.WriteLine($"Roomhandler is not yet initialized!");
-                return;
+                Console.WriteLine($"=========================== Error! ===============================\n" +
+                    $"Directory {filePath} doesn't exist, creating and exiting program...\n" +
+                    $"Please place the server build inside the newly created \"server\" folder.");
+                Directory.CreateDirectory(filePath);
+                return false;
             }
-            ProcessStartInfo p_info = new()
+            // checks if the program exists
+            if (!File.Exists($"{filePath}\\{_programName}"))
             {
-                UseShellExecute = true,
-                FileName = roomName
-            };
-            for (int i = 0; i < roomCount; i++)
-            {
-                if (!rooms.ContainsKey(i))
-                {
-                    p_info.Arguments = $"-port {roomStartingPort + i}";
-                    rooms.Add(roomStartingPort + i, Process.Start(p_info));
-                }
-                else
-                {
-                    Console.WriteLine($"port {roomStartingPort + i} is being used");
-                }
+                Console.WriteLine($"=========================== Error! ===============================\n" +
+                    $"Roomname is invalid or the program does not exist, exiting program\n" +
+                    $"Makes sure you have input the correct name and has the server program in the server folder");
+                return false;
             }
+            return true;
         }
     }
 }

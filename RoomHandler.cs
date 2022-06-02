@@ -21,20 +21,18 @@ namespace iSpyMatchmaker
         // Instance variable
         private static RoomHandler singleton = null;
 
+        /// <summary>
+        /// One and only <see cref="RoomHandler"/>
+        /// </summary>
         public static RoomHandler Singleton
         { get { if (singleton == null) singleton = new(); return singleton; } }
 
         private bool initialized = false;
 
         /// <summary>
-        /// Matchmaker current directory
+        /// 1st room port number is set to 1 + <see cref="Matchmaker"/>'s port
         /// </summary>
-        private readonly string filePath = $"{Directory.GetCurrentDirectory()}\\server";
-
-        /// <summary>
-        /// 1st room port number is set to 1 + matchmaker's port
-        /// </summary>
-        private readonly ushort roomStartingPort = (ushort)(Matchmaker.Singleton.Port + 1);
+        private readonly ushort roomStartingPort;
 
         /// <summary>
         /// Room program name, a.k.a the Unity server program
@@ -42,7 +40,7 @@ namespace iSpyMatchmaker
         private string roomName;
 
         /// <summary>
-        /// List of rooms with their unique IDs
+        /// Dictionary of rooms with their unique IDs
         /// </summary>
         private Dictionary<int, Process> rooms = null;
 
@@ -53,6 +51,7 @@ namespace iSpyMatchmaker
 
         private RoomHandler()
         {
+            roomStartingPort = (ushort)(Matchmaker.Singleton.Port + 1);
         }
 
         /// <summary>
@@ -85,7 +84,7 @@ namespace iSpyMatchmaker
             {
                 UseShellExecute = true,
 
-                FileName = $"{filePath}\\{roomName}"
+                FileName = $"{Program.FilePath}/{roomName}"
             };
             Console.WriteLine($"Creating rooms...");
             for (int id = 0; id < _roomCount; id++)
@@ -154,32 +153,6 @@ namespace iSpyMatchmaker
             rooms = null;
             Entries = null;
             Console.WriteLine($"Closing all rooms");
-        }
-
-        /// <summary>
-        /// Checks whether the directory and the server build exists
-        /// </summary>
-        /// <returns><see langword="true"/>, if the directory and server program exists</returns>
-        public bool ProgramCheck(string _programName)
-        {
-            // checks if the directory exists
-            if (!Directory.Exists(filePath))
-            {
-                Console.WriteLine($"=========================== Error! ===============================\n" +
-                    $"Directory {filePath} doesn't exist, creating and exiting program...\n" +
-                    $"Please place the server build inside the newly created \"server\" folder.");
-                Directory.CreateDirectory(filePath);
-                return false;
-            }
-            // checks if the program exists
-            if (!File.Exists($"{filePath}\\{_programName}"))
-            {
-                Console.WriteLine($"=========================== Error! ===============================\n" +
-                    $"Roomname is invalid or the program does not exist, exiting program\n" +
-                    $"Makes sure you have input the correct name and has the server program in the server folder");
-                return false;
-            }
-            return true;
         }
     }
 }

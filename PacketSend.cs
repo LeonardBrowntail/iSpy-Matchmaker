@@ -26,6 +26,7 @@ namespace iSpyMatchmaker
                 Matchmaker.Clients[_receiverID].Transport.SendData(_packet);
             }
             Console.WriteLine($"Data sent to {(server ? "server" : "client")}-{_receiverID}");
+            Console.WriteLine($"Data sent size: {_packet.Length()}");
         }
 
         /// <summary>
@@ -51,6 +52,7 @@ namespace iSpyMatchmaker
                 }
             }
             Console.WriteLine($"Data sent to {(server ? "servers" : "clients")}");
+            Console.WriteLine($"Data sent size: {_packet.Length()}");
         }
 
         /// <summary>
@@ -83,6 +85,7 @@ namespace iSpyMatchmaker
                 }
             }
             Console.WriteLine($"Data sent to {(server ? "servers" : "clients")} except {_receiverID}");
+            Console.WriteLine($"Data sent size: {_packet.Length()}");
         }
     }
 }

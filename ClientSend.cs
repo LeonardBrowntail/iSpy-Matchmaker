@@ -28,6 +28,10 @@ namespace iSpyMatchmaker
                 packet.Write(RoomHandler.Singleton.Entries[i].Port);
                 // Write max player count
                 packet.Write(RoomHandler.Singleton.Entries[i].MaxPlayer);
+                // Write player count
+                packet.Write(RoomHandler.Singleton.Entries[i].PlayerCount);
+                // Write running state
+                packet.Write(RoomHandler.Singleton.Entries[i].Running);
             }
 
             SendTCPData(_id, packet);

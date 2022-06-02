@@ -12,6 +12,8 @@ namespace iSpyMatchmaker
         //Matchmaker server
         private static readonly ushort matchmakerPort = 7777;
 
+        public static readonly string FilePath = $"{Directory.GetCurrentDirectory()}/server";
+
         //Room manager
         private static bool isRunning = false;
 
@@ -23,7 +25,7 @@ namespace iSpyMatchmaker
             Console.WriteLine($"How many rooms do you want to open?");
             string roomCount = Console.ReadLine();
 
-            if (!RoomHandler.Singleton.ProgramCheck(programName))
+            if (!ProgramCheck(programName))
             {
                 Environment.Exit(0);
             }
@@ -111,6 +113,32 @@ namespace iSpyMatchmaker
         private static void Update()
         {
             ThreadManager.UpdateMain();
+        }
+
+        /// <summary>
+        /// Checks whether the directory and the server build exists
+        /// </summary>
+        /// <returns><see langword="true"/>, if the directory and server program exists</returns>
+        private static bool ProgramCheck(string _programName)
+        {
+            // checks if the directory exists
+            if (!Directory.Exists(FilePath))
+            {
+                Console.WriteLine($"=========================== Error! ===============================\n" +
+                    $"Directory {FilePath} doesn't exist, creating and exiting program...\n" +
+                    $"Please place the server build inside the newly created \"server\" folder.");
+                Directory.CreateDirectory(FilePath);
+                return false;
+            }
+            // checks if the program exists
+            if (!File.Exists($"{FilePath}/{_programName}"))
+            {
+                Console.WriteLine($"=========================== Error! ===============================\n" +
+                    $"Roomname is invalid or the program does not exist, exiting program\n" +
+                    $"Makes sure you have input the correct name and has the server program in the server folder");
+                return false;
+            }
+            return true;
         }
     }
 }

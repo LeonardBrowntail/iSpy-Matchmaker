@@ -114,6 +114,8 @@ namespace iSpyMatchmaker
 
             public void Disconnect()
             {
+                if (socket == null) return;
+                stream.Flush();
                 socket.Close();
                 socket.Dispose();
                 stream = null;
@@ -156,17 +158,21 @@ namespace iSpyMatchmaker
 
                     stream.BeginRead(receiveBuffer, 0, dataBufferSize, ReceiveCallback, null);
                 }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
                 catch (Exception e)
                 {
                     Console.WriteLine($"Exception thrown: {e.Message}");
                     if (IsServer)
                     {
-                        if (Matchmaker.Servers != null)
+                        if (Matchmaker.Servers[id] != null)
                             Matchmaker.Servers[id].Disconnect();
                     }
                     else
                     {
-                        if (Matchmaker.Clients != null)
+                        if (Matchmaker.Clients[id] != null)
                             Matchmaker.Clients[id].Disconnect();
                     }
                 }
@@ -265,7 +271,7 @@ namespace iSpyMatchmaker
                     {
                         { (int)ServerMatchmakerPackets.initialization, ServerHandle.HandleInitReply },
                         { (int)ServerMatchmakerPackets.updateReply, ServerHandle.HandleUpdateReply },
-                        { (int)ServerMatchmakerPackets.terminationReply, ServerHandle.HandleTerminationReply }
+                        { (int)ServerMatchmakerPackets.terminationReply, ServerHandle.HandleTermination }
                     };
                     Console.WriteLine($"Initialized packet handlers for server-{id}");
                 }

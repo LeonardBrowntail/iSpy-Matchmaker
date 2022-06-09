@@ -83,8 +83,8 @@ namespace iSpyMatchmaker
                 }
             } while (input != "quit");
 
-            Matchmaker.Singleton.Stop();
             RoomHandler.Singleton.Close();
+            Matchmaker.Singleton.Stop();
 
             Environment.Exit(0);
         }

@@ -140,7 +140,10 @@ namespace iSpyMatchmaker
         public void TerminateRoom(int id)
         {
             Matchmaker.Servers[id].Disconnect();
-            rooms[id].Kill();
+            if (!rooms[id].HasExited)
+            {
+                rooms[id].Kill(true);
+            }
             rooms.Remove(id);
         }
 

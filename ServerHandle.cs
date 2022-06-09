@@ -59,7 +59,7 @@ namespace iSpyMatchmaker
         /// </summary>
         /// <param name="_senderID">server's id</param>
         /// <param name="_packet">packet to be read</param>
-        public static void HandleTerminationReply(int _senderID, Packet _packet)
+        public static void HandleTermination(int _senderID, Packet _packet)
         {
             // terminate rooms
             if (RoomHandler.Singleton.Entries[_senderID] != null)
